@@ -1,6 +1,6 @@
 """HTML template for the SDLC real-time dashboard."""
 
-DASHBOARD_HTML = r"""\
+DASHBOARD_HTML = """\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -420,14 +420,14 @@ function inferPhasesFromActivity(lines) {
   const result = {};
   let curPhase = null;
   for (const l of lines) {
-    const pm = l.match(/Phase\\s+(\\d+)\\s*[:\\-]/i);
+    const pm = l.match(/Phase\\\\s+(\\\\d+)\\\\s*[:\\\\-]/i);
     if (pm) {
       const n = parseInt(pm[1]);
       if (curPhase !== null && curPhase !== n) result[curPhase] = 'complete';
       curPhase = n;
       result[n] = 'in_progress';
     }
-    if (/Gate:\\s*PASS/i.test(l) && curPhase !== null) result[curPhase] = 'complete';
+    if (/Gate:\\\\s*PASS/i.test(l) && curPhase !== null) result[curPhase] = 'complete';
   }
   return result;
 }
@@ -440,9 +440,9 @@ function parseActivityForPhase(lines, phaseName) {
     if (l.includes('Phase') && l.toLowerCase().includes(phaseName.toLowerCase())) inPhase = true;
     else if (l.startsWith('[') || (l.startsWith('## ') && inPhase)) inPhase = false;
     if (!inPhase) continue;
-    const am = l.match(/Action:\\s*(.+)/i);
+    const am = l.match(/Action:\\\\s*(.+)/i);
     if (am) action = am[1];
-    const sm = l.match(/Subagents? dispatched:\\s*(.+)/i);
+    const sm = l.match(/Subagents? dispatched:\\\\s*(.+)/i);
     if (sm) subs = sm[1].split(',').map(s => s.trim()).filter(Boolean);
   }
   return { action, subs };
@@ -476,7 +476,7 @@ function renderTrace(trace, orch, activityLines, mc) {
       // Phase 12 (Retirement) renders alone at the top on a fresh run.
       if (st === 'pending' || st === 'not_triggered') return;
 
-      const phaseName = PHASE_NAMES[k] || k.replace(/^\d+-/, '');
+      const phaseName = PHASE_NAMES[k] || k.replace(/^\\d+-/, '');
       const agentId = PHASE_AGENTS[k] || 'unknown';
       const knownSubs = PHASE_SUBAGENTS[num] || [];
 
