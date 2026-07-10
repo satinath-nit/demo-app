@@ -113,6 +113,24 @@ For each phase, read the stage agent prompt from `.sdlc/framework/agents/stage/<
 
 **RARV Cycle (every action):** Reason → Act → Reflect → Verify
 
+## CONTINUOUS EXECUTION — Do NOT Stop Between Phases
+
+**Run ALL phases in a single continuous session.** After you finish a phase and its
+quality gate passes, **immediately begin the next phase in the same turn** — do NOT
+end your turn, do NOT ask "should I continue?", and do NOT park the next phase as a
+todo and wait. Chain Phase 0 → 1 → 2 → … without pausing.
+
+You may ONLY stop and hand control back to the user when one of these is true:
+1. **All phases are complete** (final review PASS), or
+2. A **quality gate fails 3 times** on the same task (escalate), or
+3. Phase 0 returns a **NO-GO** decision, or
+4. A **required human approval** is pending in `.sdlc/governance/pending-approvals.json`, or
+5. The **budget limit is exceeded** (>100% in `token-usage.json`).
+
+If you are running in a turn-based IDE (e.g. GitHub Copilot) that limits tool calls
+per turn and interrupts you, **resume automatically from `.sdlc/CONTINUITY.md`** and
+keep going without asking. Treat any interruption as "continue", not "stop".
+
 ## If This Is a Fresh Start
 
 If `.sdlc/CONTINUITY.md` says "Phase 0: Problem Discovery — Initialized, awaiting spec input":
@@ -132,6 +150,7 @@ If `.sdlc/CONTINUITY.md` says "Phase 0: Problem Discovery — Initialized, await
 - **NEVER** skip phases or jump directly to coding
 - **NEVER** ask questions — make decisions and execute
 - **NEVER** wait for confirmation — take immediate action
+- **NEVER** end your turn between phases — advance to the next phase automatically (see Continuous Execution above)
 - **ALWAYS** read CONTINUITY.md at the start of every turn
 - **ALWAYS** update CONTINUITY.md + orchestrator.json + activity-log.md + STATUS.md at every phase transition
 - **ALWAYS** enforce quality gates before advancing phases

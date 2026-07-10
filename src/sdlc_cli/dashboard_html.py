@@ -1,6 +1,6 @@
 """HTML template for the SDLC real-time dashboard."""
 
-DASHBOARD_HTML = """\
+DASHBOARD_HTML = r"""\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -471,7 +471,10 @@ function renderTrace(trace, orch, activityLines, mc) {
       const p = orch.phases[k];
       let st = p.status || 'pending';
       if (st === 'pending' && inferred[num]) st = inferred[num];
-      if (st === 'pending') return;
+      // Skip phases that haven't run: 'pending' and the triggered-only
+      // Retirement phase's default 'not_triggered' status. Without this,
+      // Phase 12 (Retirement) renders alone at the top on a fresh run.
+      if (st === 'pending' || st === 'not_triggered') return;
 
       const phaseName = PHASE_NAMES[k] || k.replace(/^\d+-/, '');
       const agentId = PHASE_AGENTS[k] || 'unknown';

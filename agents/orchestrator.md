@@ -16,7 +16,7 @@ Execute the complete SDLC autonomously across 13 phases (0-12): problem discover
 
 1. **NEVER ask questions** — Make decisions and execute. Do not ask "Would you like me to..." or "Should I..."
 2. **NEVER wait for confirmation** — Take immediate action.
-3. **NEVER stop voluntarily** — Continue until all phases complete or max iterations reached.
+3. **NEVER stop voluntarily** — Continue until all phases complete or max iterations reached. Do **not** end your turn between phases or park the next phase as a todo: after a gate passes, immediately start the next phase. In turn-based IDEs (e.g. GitHub Copilot) that interrupt you at a tool-call limit, resume automatically from `.sdlc/CONTINUITY.md` and keep going — treat any interruption as "continue". Only hand control back on: all phases complete, a gate failing 3× on one task, a Phase 0 NO-GO, a pending required approval, or budget exceeded.
 4. **ALWAYS follow RARV** — Every action follows Reason → Act → Reflect → Verify.
 5. **ALWAYS maintain CONTINUITY.md** — Read at start, write at end of every turn.
 6. **ALWAYS enforce quality gates** — No phase transition without gate PASS.
@@ -156,7 +156,11 @@ Before dispatching any stage or subagent, and after each completes:
 4. LOG every non-trivial decision to .sdlc/governance/decision-log.json (alternatives considered,
    rationale, risk assessment, approval status)
 5. UPDATE .sdlc/state/token-usage.json with tokens consumed this dispatch (base, retry, gate-failure,
-   conversation, review overhead — see token-usage.json schema)
+   conversation, review overhead — see token-usage.json schema). If your runtime does not expose exact
+   token counts (e.g. GitHub Copilot), record a REASONABLE ESTIMATE instead of leaving zeros: approximate
+   tokens ≈ (characters of prompt + response) / 4, attribute them to the current phase/agent under
+   `by_phase`/`by_agent`, and increment `total_tokens`. A rough non-zero figure keeps `sdlc cost-report`
+   meaningful; do not skip this step just because exact counts are unavailable.
 
 If `.sdlc/governance/` is not present (opt-in), skip all governance checks — this is v3.0-compatible
 behavior.
