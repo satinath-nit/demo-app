@@ -239,6 +239,9 @@ const STATUS_ICONS = {
 
 let ws;
 let reconnectTimer;
+// {phaseKey: bool} from phase-config.json. Disabled phases are hidden.
+let PHASE_ENABLED = {};
+function phaseDisabled(key) { return PHASE_ENABLED[key] === false; }
 
 function connect() {
   const wsPort = /*WS_PORT*/8421;
@@ -281,6 +284,7 @@ function render(data) {
   } else {
     lastGoodData = data;
   }
+  PHASE_ENABLED = data.phase_enabled || {};
   renderPhases(data.orchestrator, data.activity_log);
   renderStats(data.orchestrator, data.queue, data.model_config, data.activity_log);
   renderQueue(data.queue, data.orchestrator, data.activity_log);
@@ -306,7 +310,9 @@ function renderPhases(orch, activityLines) {
   if (!orch || !orch.phases) return;
   const el = document.getElementById('phases');
   const inferred = inferPhasesFromActivity(activityLines);
-  const keys = Object.keys(orch.phases).sort((a,b) => parseInt(a) - parseInt(b));
+  const keys = Object.keys(orch.phases)
+    .filter(k => !phaseDisabled(k))
+    .sort((a,b) => parseInt(a) - parseInt(b));
   el.innerHTML = keys.map(k => {
     const p = orch.phases[k];
     const num = parseInt(k.split('-')[0]);
@@ -339,7 +345,7 @@ function renderStats(orch, queue, mc, activityLines) {
   let done = orch.completed_tasks || 0;
   let total = orch.total_tasks || 0;
   if (total === 0 && orch.phases) {
-    const keys = Object.keys(orch.phases);
+    const keys = Object.keys(orch.phases).filter(k => !phaseDisabled(k));
     total = keys.length;
     done = 0;
     keys.forEach(k => {
@@ -365,6 +371,7 @@ function renderQueue(q, orch, activityLines) {
     // Derive from orchestrator phases + activity log inference
     const inferred = inferPhasesFromActivity(activityLines);
     Object.entries(orch.phases).forEach(([k, p]) => {
+      if (phaseDisabled(k)) return;
       const num = parseInt(k);
       let st = p.status || 'pending';
       if (st === 'pending' && inferred[num]) st = inferred[num];
@@ -459,6 +466,7 @@ function renderTrace(trace, orch, activityLines, mc) {
     const inferred = inferPhasesFromActivity(activityLines);
     const phaseKeys = Object.keys(orch.phases).sort((a,b) => parseInt(a) - parseInt(b));
     phaseKeys.forEach(k => {
+      if (phaseDisabled(k)) return;
       const num = parseInt(k);
       const p = orch.phases[k];
       let st = p.status || 'pending';

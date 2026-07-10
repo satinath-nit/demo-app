@@ -33,6 +33,24 @@ app.add_typer(agents_app, name="agents")
 console = Console()
 
 
+def _enabled_map_for(sdlc_dir: Path) -> dict[str, bool]:
+    """Return {phase_key: enabled} from phase-config.json, for the Mermaid map.
+
+    Disabled phases are hidden from the generated agent-map.md. Returns an
+    empty map (all enabled) if anything goes wrong.
+    """
+    try:
+        from .phases import (
+            load_config as _load_phase_config,
+            load_custom_agents as _load_custom_agents,
+            phase_enabled_map as _phase_enabled_map,
+        )
+
+        return _phase_enabled_map(_load_phase_config(sdlc_dir), _load_custom_agents(sdlc_dir))
+    except Exception:
+        return {}
+
+
 @app.command()
 def init(
     target: str | None = typer.Argument(None, help="Target directory (default: current)"),
@@ -244,7 +262,13 @@ def status(
         phase_table.add_column("Gate", justify="center", width=6)
 
         phases = state.get("phases", {})
+        enabled_map = _enabled_map_for(sdlc_dir)
+        hidden = 0
         for key in sorted(phases.keys(), key=lambda k: int(k.split("-")[0])):
+            # Hide disabled phases (consistent with `sdlc phases`/dashboard).
+            if enabled_map.get(key, True) is False:
+                hidden += 1
+                continue
             phase = phases[key]
             num = key.split("-")[0]
             name = phase_names.get(key, key)
@@ -254,6 +278,11 @@ def status(
             phase_table.add_row(num, name, agent, st, gate)
 
         console.print(phase_table)
+        if hidden:
+            console.print(
+                f"[dim]{hidden} phase(s) hidden (disabled in phase-config.json). "
+                "Run [cyan]sdlc phases[/] to view/enable them.[/]"
+            )
         console.print()
 
     # ── Queue ──
@@ -307,7 +336,7 @@ def status(
         orch_d = _json.loads(orch_file_2.read_text()) if orch_file_2.exists() else {}
         trace_d = _json.loads(trace_file_2.read_text()) if trace_file_2.exists() else {"traces": []}
         mc_d = _json.loads(mc_file.read_text()) if mc_file.exists() else {}
-        md = generate_agent_map_md(orch_d, trace_d, mc_d)
+        md = generate_agent_map_md(orch_d, trace_d, mc_d, _enabled_map_for(sdlc_dir))
         map_path = run_dir / "state" / "agent-map.md"
         map_path.write_text(md, encoding="utf-8")
         console.print(f"[dim]Agent diagram written to {map_path.relative_to(sdlc_dir.parent)}[/]")
@@ -367,7 +396,7 @@ def trace(
                 mc_file_d = sdlc_dir / "model-config.json"
                 orch_d = _json.loads(orch_file_d.read_text()) if orch_file_d.exists() else {}
                 mc_d = _json.loads(mc_file_d.read_text()) if mc_file_d.exists() else {}
-                md_content = generate_agent_map_md(orch_d, data, mc_d)
+                md_content = generate_agent_map_md(orch_d, data, mc_d, _enabled_map_for(sdlc_dir))
                 map_path = run_dir / "state" / "agent-map.md"
                 map_path.write_text(md_content, encoding="utf-8")
                 console.print(f"[green]✅ Agent diagram written to {map_path}[/]")
@@ -516,7 +545,7 @@ def trace(
             mc_file_d = sdlc_dir / "model-config.json"
             orch_d = _json.loads(orch_file_d.read_text()) if orch_file_d.exists() else {}
             mc_d = _json.loads(mc_file_d.read_text()) if mc_file_d.exists() else {}
-            md_content = generate_agent_map_md(orch_d, data, mc_d)
+            md_content = generate_agent_map_md(orch_d, data, mc_d, _enabled_map_for(sdlc_dir))
             map_path = run_dir / "state" / "agent-map.md"
             map_path.write_text(md_content, encoding="utf-8")
             console.print(f"[green]✅ Agent diagram written to {map_path}[/]")

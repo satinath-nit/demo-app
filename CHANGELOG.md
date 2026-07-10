@@ -9,6 +9,7 @@ All notable changes to the Autonomous SDLC Framework.
 
 ### Fixed
 - **`sdlc phases --disable/--enable` now validate stage-ids/subagent-ids.** Previously an invalid id (e.g. `--disable DevOps` instead of `stage-devops`) was silently accepted as a no-op with exit 0. It now errors with exit 1 and lists the valid ids. Added a **Valid stage-ids** table to the `sdlc phases` section of `docs/cli-reference.md`.
+- **Dashboard, `sdlc status`, and the agent interaction map now respect `phase-config.json`.** `sdlc dashboard` (phase-progress pills, stats, queue, interaction map panel), the `sdlc status` Phase Progress table, and the Mermaid `agent-map.md` (dashboard diagram + `sdlc status`/`sdlc trace --diagram`) previously rendered every phase from `orchestrator.json`/the full registry, ignoring disabled phases. Disabled phases are now **hidden** everywhere (the `status` table prints an "N phase(s) hidden" hint), so `sdlc phases --preset lean` (or any `--disable`) is reflected consistently. The dashboard payload gained a `phase_enabled` map and now watches `phase-config.json` for live updates.
 
 ## [4.0.0] - 2026-07-09
 

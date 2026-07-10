@@ -465,6 +465,25 @@ def phase_display_names(custom_agents: dict[str, Any] | None = None) -> dict[str
     return {row["key"]: row["name"] for row in agent_registry(custom_agents)}
 
 
+def phase_enabled_map(
+    config: dict[str, Any] | None,
+    custom_agents: dict[str, Any] | None = None,
+) -> dict[str, bool]:
+    """Return {phase_key: enabled} for every phase in the pipeline.
+
+    Bootstrap (orchestrator-direct) is always enabled. If ``config`` is None
+    (no phase-config.json), every phase is treated as enabled.
+    """
+    cfg = config or {}
+    result: dict[str, bool] = {}
+    for row in agent_registry(custom_agents):
+        if row["role"] == "orchestrator":
+            result[row["key"]] = True
+        else:
+            result[row["key"]] = is_stage_enabled(row["agent"], cfg)
+    return result
+
+
 def summary(
     config: dict[str, Any], custom_agents: dict[str, Any] | None = None
 ) -> list[dict[str, Any]]:

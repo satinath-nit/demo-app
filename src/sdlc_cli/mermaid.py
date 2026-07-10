@@ -32,6 +32,7 @@ def generate_mermaid(
     orch_data: dict | None = None,
     trace_data: dict | None = None,
     model_config: dict | None = None,
+    enabled_map: dict[str, bool] | None = None,
 ) -> str:
     """Generate a Mermaid flowchart showing per-phase agent interactions.
 
@@ -39,12 +40,18 @@ def generate_mermaid(
         orch_data: orchestrator.json content (for phase statuses)
         trace_data: agent-trace.json content (for actual dispatch info)
         model_config: model-config.json content (for model labels)
+        enabled_map: {phase_key: enabled} from phase-config.json. Disabled
+            phases are greyed out and marked; None means all enabled.
 
     Returns:
         Mermaid diagram source string
     """
     phases = (orch_data or {}).get("phases", {})
     traces = (trace_data or {}).get("traces", [])
+    enabled_map = enabled_map or {}
+
+    def _disabled(key: str) -> bool:
+        return enabled_map.get(key, True) is False
 
     # Build lookup: agent_id -> model name
     model_map: dict[str, str] = {}
@@ -84,6 +91,10 @@ def generate_mermaid(
         subs = reg["subagents"]
         nid = _node_id(agent)
 
+        # Hide disabled phases entirely.
+        if _disabled(key):
+            continue
+
         # Determine status
         phase_info = phases.get(key, {})
         status = phase_info.get("status", "pending")
@@ -117,18 +128,21 @@ def generate_mermaid(
         lines.append(f"    class P{phase_num} {cls}")
         lines.append("")
 
+    # Only enabled phases participate in arrows/sequence.
+    visible = [r for r in AGENT_REGISTRY if not _disabled(r["key"])]
+
     # Orchestrator dispatch arrows
     lines.append("    %% Dispatch flow")
-    for reg in AGENT_REGISTRY:
+    for reg in visible:
         nid = _node_id(reg["agent"])
         lines.append(f"    ORCH -.->|\"Phase {reg['phase']}\"| {nid}")
 
     # Phase sequence arrows
     lines.append("")
     lines.append("    %% Phase sequence")
-    for i in range(len(AGENT_REGISTRY) - 1):
-        a = _node_id(AGENT_REGISTRY[i]["agent"])
-        b = _node_id(AGENT_REGISTRY[i + 1]["agent"])
+    for i in range(len(visible) - 1):
+        a = _node_id(visible[i]["agent"])
+        b = _node_id(visible[i + 1]["agent"])
         lines.append(f"    {a} ==> {b}")
 
     # Style definitions
@@ -140,9 +154,10 @@ def generate_mermaid(
         "    classDef pending fill:#21262d,stroke:#30363d,color:#8b949e",
     ])
 
-    # Apply status styles to individual nodes
-    for reg in AGENT_REGISTRY:
-        phase_info = phases.get(reg["key"], {})
+    # Apply status styles to individual nodes (enabled phases only)
+    for reg in visible:
+        key = reg["key"]
+        phase_info = phases.get(key, {})
         status = phase_info.get("status", "pending")
         cls = _status_class(status)
         nid = _node_id(reg["agent"])
@@ -161,9 +176,10 @@ def generate_agent_map_md(
     orch_data: dict | None = None,
     trace_data: dict | None = None,
     model_config: dict | None = None,
+    enabled_map: dict[str, bool] | None = None,
 ) -> str:
     """Generate a full Markdown document with the Mermaid diagram."""
-    diagram = generate_mermaid(orch_data, trace_data, model_config)
+    diagram = generate_mermaid(orch_data, trace_data, model_config, enabled_map)
     return (
         "# Agent Interaction Map\n\n"
         "```mermaid\n"

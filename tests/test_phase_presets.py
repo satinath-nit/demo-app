@@ -139,3 +139,70 @@ def test_disable_unknown_subagent_errors(tmp_path: Path) -> None:
     )
     assert result.exit_code == 1
     assert "Unknown subagent" in result.output
+
+
+def test_phase_enabled_map_reflects_lean_preset() -> None:
+    from sdlc_cli.phases import phase_enabled_map, preset_config
+
+    emap = phase_enabled_map(preset_config("lean"))
+    assert emap["8-security"] is False
+    assert emap["0-problem-discovery"] is False
+    assert emap["11-observability"] is False
+    assert emap["12-retirement"] is False
+    assert emap["6-development"] is True
+    # Bootstrap is always enabled.
+    assert emap["1-bootstrap"] is True
+
+
+def test_mermaid_hides_disabled_phases() -> None:
+    from sdlc_cli.mermaid import generate_mermaid
+    from sdlc_cli.phases import phase_enabled_map, preset_config
+
+    emap = phase_enabled_map(preset_config("lean"))
+    src = generate_mermaid({}, {"traces": []}, {}, emap)
+
+    # Disabled stages + their subagents must be absent entirely.
+    assert "stage-security" not in src
+    assert "sub-secret-scanner" not in src
+    assert "stage-retirement" not in src
+    assert "8. Security" not in src
+
+    # Enabled stages remain.
+    assert "stage-development" in src
+    assert "6. Development" in src
+
+
+def test_mermaid_shows_all_when_no_map() -> None:
+    from sdlc_cli.mermaid import generate_mermaid
+
+    src = generate_mermaid({}, {"traces": []}, {})
+    assert "stage-security" in src
+    assert "stage-retirement" in src
+
+
+def test_status_table_hides_disabled_phases(tmp_path: Path) -> None:
+    _init(tmp_path)
+    runner.invoke(app, ["phases", str(tmp_path), "--preset", "lean"])
+
+    result = runner.invoke(app, ["status", str(tmp_path)])
+    assert result.exit_code == 0
+    # Enabled phases present; disabled ones hidden with a hint line.
+    assert "Development" in result.output
+    assert "Security" not in result.output
+    assert "Observability" not in result.output
+    assert "hidden" in result.output
+
+
+def test_dashboard_payload_includes_phase_enabled(tmp_path: Path) -> None:
+    from sdlc_cli.dashboard import read_state
+
+    _init(tmp_path)
+    runner.invoke(app, ["phases", str(tmp_path), "--preset", "lean"])
+
+    state = read_state(tmp_path / ".sdlc")
+    emap = state["phase_enabled"]
+    assert emap["8-security"] is False
+    assert emap["6-development"] is True
+    # Disabled phases are hidden from the embedded diagram too.
+    assert "stage-security" not in state["mermaid_src"]
+    assert "stage-development" in state["mermaid_src"]
