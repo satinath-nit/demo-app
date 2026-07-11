@@ -279,7 +279,8 @@ function render(data) {
   const orch = data.orchestrator;
   if (!orch || !orch.phases || Object.keys(orch.phases).length === 0) {
     if (lastGoodData) {
-      data = lastGoodData;
+      // If new data is partial, merge it with last good state
+      data.orchestrator = lastGoodData.orchestrator;
     }
   } else {
     lastGoodData = data;
